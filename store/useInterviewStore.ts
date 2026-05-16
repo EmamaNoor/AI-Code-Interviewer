@@ -20,22 +20,37 @@ export interface ChatMessage {
 interface InterviewState {
   socket: Socket | null;
   sessionId: string | null;
+  difficulty: string;
+  language: string;
   problem: Problem | null;
   code: string;
   chatHistory: ChatMessage[];
   isSubmitting: boolean;
   evaluation: any | null;
+  lastHintTime: number | null;
+  isAiTyping: boolean;
+  hintTiming: 'instant' | 'stuck';
+  hintType: 'concept' | 'code';
   
   // Actions
-  initSession: (sessionId: string) => Promise<void>;
+  initSession: (sessionId: string, difficulty?: string, language?: string) => Promise<void>;
   setCode: (code: string) => void;
   submitSolution: () => Promise<void>;
   skipProblem: () => Promise<void>;
+  changeLanguage: (language: string) => Promise<void>;
+  changeDifficulty: (difficulty: string) => Promise<void>;
+  requestHint: () => void;
+  retryWithHint: () => void;
+  resetCode: () => void;
+  setHintTiming: (timing: 'instant' | 'stuck') => void;
+  setHintType: (type: 'concept' | 'code') => void;
 }
 
 export const useInterviewStore = create<InterviewState>((set, get) => ({
   socket: null,
   sessionId: null,
+  difficulty: "Medium",
+  language: "javascript",
   problem: null,
   code: '',
   chatHistory: [
@@ -47,9 +62,13 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   ],
   isSubmitting: false,
   evaluation: null,
+  lastHintTime: null,
+  isAiTyping: false,
+  hintTiming: 'stuck',
+  hintType: 'concept',
 
-  initSession: async (sessionId: string) => {
-    set({ sessionId, problem: null, code: '', evaluation: null, chatHistory: [
+  initSession: async (sessionId: string, difficulty: string = "Medium", language: string = "javascript") => {
+    set({ sessionId, difficulty, language, problem: null, code: '', evaluation: null, chatHistory: [
       {
         id: 'welcome',
         role: 'assistant',
@@ -62,7 +81,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
       const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty: 'Medium' })
+        body: JSON.stringify({ difficulty, language })
       });
       if (!res.ok) {
         const text = await res.text();
@@ -77,8 +96,8 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         console.warn('API did not return a problem. Falling back to a hardcoded example.');
         newProblem = {
           title: "Two Sum (Fallback)",
-          difficulty: "Easy",
-          description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\n(Note: The Anthropic API failed to generate a problem, likely due to billing issues. This is a fallback problem.)",
+          difficulty: difficulty,
+          description: "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\n(Note: The API failed to generate a problem. This is a fallback problem.)",
           examples: [{ input: "nums = [2,7,11,15], target = 9", output: "[0,1]", explanation: "Because nums[0] + nums[1] == 9, we return [0, 1]." }],
           constraints: ["2 <= nums.length <= 10^4"],
           starter_code: "function twoSum(nums, target) {\n  // Write your code here\n  \n};",
@@ -98,8 +117,13 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         socket.emit('join_session', { sessionId, problemDescription: JSON.stringify(newProblem) });
       });
 
+      socket.on('ai_typing', () => {
+        set({ isAiTyping: true });
+      });
+
       socket.on('ai_hint', (data: { hint: string }) => {
         set((state) => ({
+          isAiTyping: false,
           chatHistory: [...state.chatHistory, { id: Date.now().toString(), role: 'assistant', content: data.hint }]
         }));
       });
@@ -113,9 +137,10 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
 
   setCode: (code: string) => {
     set({ code });
-    const { socket, sessionId } = get();
+    const { socket, sessionId, hintTiming, hintType, chatHistory } = get();
     if (socket && sessionId) {
-      socket.emit('code_update', { sessionId, code });
+      const pastHints = chatHistory.filter(h => h.role === 'assistant').map(h => h.content);
+      socket.emit('code_update', { sessionId, code, hintTiming, hintType, pastHints });
     }
   },
 
@@ -123,7 +148,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     set({ isSubmitting: true });
     const { problem, code } = get();
     try {
-      const res = await fetch('/api/eval', {
+      const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,7 +166,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
           {
             id: Date.now().toString(),
             role: 'assistant',
-            content: `**Evaluation:**\nScore: ${evaluation.score}/100\nCorrectness: ${evaluation.correctness}\n\nVerdict: ${evaluation.verdict}`
+            content: `**Evaluation Complete:**\nScore: ${evaluation.score}/100\nVerdict: ${evaluation.verdict}`
           }
         ]
       });
@@ -152,9 +177,71 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   },
 
   skipProblem: async () => {
-    const { sessionId } = get();
+    const { sessionId, difficulty, language } = get();
     if (sessionId) {
-      await get().initSession(sessionId + '-' + Date.now()); // Re-init with new problem
+      await get().initSession(sessionId + '-' + Date.now(), difficulty, language); // Re-init with new problem
     }
-  }
+  },
+
+  changeLanguage: async (language: string) => {
+    const { sessionId, difficulty } = get();
+    if (sessionId) {
+      await get().initSession(sessionId, difficulty, language);
+    }
+  },
+
+  changeDifficulty: async (difficulty: string) => {
+    const { sessionId, language } = get();
+    if (sessionId) {
+      await get().initSession(sessionId, difficulty, language);
+    }
+  },
+
+  requestHint: () => {
+    const { socket, sessionId, lastHintTime, hintType, chatHistory } = get();
+    
+    if (lastHintTime && Date.now() - lastHintTime < 30000) {
+      alert("Please wait 30 seconds before requesting another manual hint.");
+      return;
+    }
+
+    if (socket && sessionId) {
+      set({ lastHintTime: Date.now() });
+      const pastHints = chatHistory.filter(h => h.role === 'assistant').map(h => h.content);
+      socket.emit('request_manual_hint', { sessionId, hintType, pastHints });
+    }
+  },
+
+  retryWithHint: () => {
+    const { evaluation, chatHistory } = get();
+    
+    // Always reset the code on retry
+    get().resetCode();
+
+    if (evaluation && evaluation.improvements && evaluation.improvements.length > 0) {
+      set({
+        evaluation: null,
+        chatHistory: [
+          ...chatHistory,
+          {
+            id: Date.now().toString(),
+            role: 'assistant',
+            content: `**Hint for your retry:**\n${evaluation.improvements[0]}`
+          }
+        ]
+      });
+    } else {
+      set({ evaluation: null });
+    }
+  },
+
+  resetCode: () => {
+    const { problem } = get();
+    if (problem) {
+      get().setCode(problem.starter_code);
+    }
+  },
+
+  setHintTiming: (timing: 'instant' | 'stuck') => set({ hintTiming: timing }),
+  setHintType: (type: 'concept' | 'code') => set({ hintType: type })
 }));

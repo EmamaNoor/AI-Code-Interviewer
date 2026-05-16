@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { genAI } from '@/lib/gemini';
+import { groq } from '@/lib/groq';
 import { PROBLEM_PROMPT } from '@/lib/prompts';
 
 const sessions = new Map<string, any>();
@@ -43,11 +43,20 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { difficulty } = await req.json();
+    const { difficulty, language = 'javascript' } = await req.json();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(PROBLEM_PROMPT(difficulty));
-    const text = result.response.text();
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "user",
+          content: PROBLEM_PROMPT(difficulty, language),
+        },
+      ],
+      model: "llama-3.3-70b-versatile",
+      response_format: { type: "json_object" },
+    });
+    
+    const text = completion.choices[0]?.message?.content || "{}";
 
     const cleaned = text.replace(/```json|```/g, "").trim();
     const problem = JSON.parse(cleaned);
@@ -59,7 +68,7 @@ export async function POST(req: Request) {
     return Response.json({
       problem: FALLBACK_PROBLEM,
       fallback: true,
-      message: "Gemini failed, so a fallback problem was used.",
+      message: "Groq failed, so a fallback problem was used.",
       details: error?.message || "Unknown error",
     });
   }

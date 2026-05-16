@@ -1,5 +1,5 @@
-export const PROBLEM_PROMPT = (difficulty: string) => `
-Generate a ${difficulty} LeetCode-style coding problem.
+export const PROBLEM_PROMPT = (difficulty: string, language: string) => `
+Generate a ${difficulty} LeetCode-style coding problem. Ensure the starter_code and solution are written in ${language}.
 Return only valid JSON, no markdown, no explanation.
 
 {

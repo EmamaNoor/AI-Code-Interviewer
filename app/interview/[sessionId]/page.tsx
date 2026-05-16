@@ -5,18 +5,27 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import EditorPanel from "@/components/Editor";
 import ProblemPanel from "@/components/Problem";
 import HintPanel from "@/components/Hint";
+import FeedbackModal from "@/components/Feedback";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LayoutDashboard } from "lucide-react";
 import { useInterviewStore } from "@/store/useInterviewStore";
 import { useEffect } from "react";
 
-export default function InterviewPage({ params }: { params: Promise<{ sessionId: string }> }) {
+import { useParams, useSearchParams } from "next/navigation";
+
+export default function InterviewPage() {
   const { initSession } = useInterviewStore();
-  const { sessionId } = React.use(params);
+  const params = useParams();
+  const searchParams = useSearchParams();
+  
+  const sessionId = params?.sessionId as string;
+  const difficulty = searchParams?.get("difficulty") || "Medium";
 
   useEffect(() => {
-    initSession(sessionId);
-  }, [sessionId, initSession]);
+    if (sessionId) {
+      initSession(sessionId, difficulty);
+    }
+  }, [sessionId, difficulty, initSession]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background text-foreground overflow-hidden">
@@ -57,6 +66,9 @@ export default function InterviewPage({ params }: { params: Promise<{ sessionId:
           </Panel>
         </PanelGroup>
       </main>
+
+      {/* Evaluation Feedback Overlay */}
+      <FeedbackModal />
     </div>
   );
 }

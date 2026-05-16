@@ -3,7 +3,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 dotenv.config();
 
@@ -19,7 +19,9 @@ const io = new Server(server, {
   }
 });
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 // Store session timers and code
 const sessions = new Map<string, { code: string; problem: string; timer?: NodeJS.Timeout }>();
@@ -33,39 +35,52 @@ io.on('connection', (socket) => {
     
     if (!sessions.has(sessionId)) {
       sessions.set(sessionId, { code: '', problem: problemDescription });
+    } else {
+      // Always update the problem description to ensure it's not stale
+      // if the user changed difficulty or language without changing sessionId
+      sessions.get(sessionId)!.problem = problemDescription;
     }
   });
 
-  socket.on('code_update', ({ sessionId, code }) => {
+  socket.on('code_update', ({ sessionId, code, hintTiming = 'stuck', hintType = 'concept', pastHints = [] }) => {
     const session = sessions.get(sessionId);
     if (!session) return;
 
     session.code = code;
+  });
 
-    // Clear existing timer
-    if (session.timer) {
-      clearTimeout(session.timer);
+  socket.on('request_manual_hint', async ({ sessionId, hintType = 'concept', pastHints = [] }) => {
+    const session = sessions.get(sessionId);
+    if (!session) return;
+
+    try {
+      const promptRule = hintType === 'concept' 
+        ? 'Provide ONE extremely brief conceptual hint. Under NO circumstances should you output code.'
+        : 'Provide ONE extremely brief hint. You MUST include a short `code block`.';
+
+      const systemMessage = `You are a coding interviewer. Give ONE hint only.
+Rules: respond in 10 words max. No greetings. No explanations.
+NEVER provide the complete solution. NEVER write more than 2 lines of code.
+Previous hints given (DO NOT repeat): ${pastHints.slice(-3).join(' | ')}
+${promptRule}`;
+
+      const userMessage = `Problem: ${session.problem}\nCode so far:\n${session.code}`;
+
+      io.to(sessionId).emit('ai_typing');
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userMessage }
+        ],
+        model: "llama-3.1-8b-instant",
+        max_tokens: 60,
+      });
+      const hintText = completion.choices[0]?.message?.content?.trim() || "Think about edge cases.";
+      
+      io.to(sessionId).emit('ai_hint', { hint: hintText });
+    } catch (error) {
+      console.error('Error generating manual hint:', error);
     }
-
-    // Set a new timer to check if user is stuck (e.g., no typing for 30 seconds for demo purposes)
-    session.timer = setTimeout(async () => {
-      console.log(`User in session ${sessionId} appears stuck. Generating hint...`);
-      try {
-        const HINT_PROMPT = `
-Problem: ${session.problem}
-User's current code: ${session.code}
-
-Give ONE short hint (max 2 sentences). Don't solve it. Just nudge them in the right direction.`;
-
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-        const result = await model.generateContent(HINT_PROMPT);
-        const hintText = result.response.text();
-        
-        io.to(sessionId).emit('ai_hint', { hint: hintText });
-      } catch (error) {
-        console.error('Error generating hint:', error);
-      }
-    }, 30000); // 30 seconds for testing/demo
   });
 
   socket.on('disconnect', () => {

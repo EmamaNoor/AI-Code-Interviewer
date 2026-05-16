@@ -7,7 +7,8 @@ import ReactMarkdown from 'react-markdown';
 
 export default function HintPanel() {
   const [seconds, setSeconds] = useState(0);
-  const { chatHistory, isSubmitting, submitSolution, skipProblem } = useInterviewStore();
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const { chatHistory, isSubmitting, submitSolution, skipProblem, requestHint, isAiTyping, lastHintTime } = useInterviewStore();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -16,6 +17,18 @@ export default function HintPanel() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (lastHintTime) {
+        const remaining = Math.max(0, 30 - Math.floor((Date.now() - lastHintTime) / 1000));
+        setCooldownLeft(remaining);
+      } else {
+        setCooldownLeft(0);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lastHintTime]);
+
   const formatTime = (totalSeconds: number) => {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
@@ -23,13 +36,14 @@ export default function HintPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-card">
-      <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
-        <div className="flex items-center text-muted-foreground">
+    <div className="flex flex-col h-full bg-card overflow-hidden">
+      <div className="min-h-[56px] border-b border-border flex items-center justify-between px-4 py-2 bg-muted/30 gap-3">
+        <div className="flex items-center text-muted-foreground gap-2">
           <MessageSquare className="w-4 h-4 mr-2" />
-          <span className="font-medium text-sm">AI Assistant</span>
+          <span className="font-medium text-sm hidden sm:inline">AI Assistant</span>
         </div>
-        <div className="flex items-center bg-background px-3 py-1 rounded-full border border-border">
+        
+        <div className="flex items-center bg-background px-3 py-1 rounded-full border border-border shrink-0">
           <Timer className="w-3.5 h-3.5 mr-1.5 text-primary animate-pulse" />
           <span className="text-xs font-mono font-medium">{formatTime(seconds)}</span>
         </div>
@@ -38,30 +52,52 @@ export default function HintPanel() {
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4">
         {chatHistory.map((msg, index) => (
           <div key={msg.id || index} className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 w-full">
               <div className="bg-primary/20 p-2 rounded-full flex-shrink-0">
                 <Lightbulb className="w-4 h-4 text-primary" />
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm dark:prose-invert max-w-none min-w-0 flex-1 overflow-x-auto">
                 <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             </div>
           </div>
         ))}
+        {isAiTyping && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/20 p-2 rounded-full flex-shrink-0">
+                <Lightbulb className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-muted-foreground italic">AI Assistant is analyzing your code...</p>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="p-4 border-t border-border bg-card flex gap-3">
+      <div className="p-4 border-t border-border bg-card flex gap-2">
         <button
           onClick={skipProblem}
-          className="flex-1 flex items-center justify-center gap-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground py-3 rounded-md font-medium transition-all"
+          className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 rounded-md font-medium transition-all text-sm"
         >
           <SkipForward className="w-4 h-4" />
           Skip
         </button>
         <button
+          onClick={requestHint}
+          disabled={cooldownLeft > 0}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md font-medium transition-all text-sm ${
+            cooldownLeft > 0 
+              ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-70' 
+              : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/30'
+          }`}
+        >
+          <Lightbulb className="w-4 h-4" />
+          {cooldownLeft > 0 ? `Wait ${cooldownLeft}s` : 'Hint'}
+        </button>
+        <button
           onClick={submitSolution}
           disabled={isSubmitting}
-          className="flex-[2] flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-md font-medium transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+          className="flex-[1.5] flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-md font-medium transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm"
         >
           {isSubmitting ? (
             <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
