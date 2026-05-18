@@ -112,7 +112,7 @@ export default function EditorPanel() {
           }, hintTiming === 'instant' ? 400 : 5000); // 400ms for instant, 5s for stuck
         });
       },
-      freeInlineCompletions: () => {}
+      disposeInlineCompletions: () => {}
     });
 
     return () => {

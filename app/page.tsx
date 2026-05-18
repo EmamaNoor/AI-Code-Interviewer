@@ -38,7 +38,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24 bg-background text-foreground overflow-y-auto">
       <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
-        {userId && <UserButton afterSignOutUrl="/" />}
+        {userId && <UserButton />}
         <ThemeToggle />
       </div>
       

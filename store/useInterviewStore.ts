@@ -210,7 +210,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     }
   },
 
-  changeLanguage: (language: string) => {
+  changeLanguage: async (language: string) => {
     set({ language });
   },
 
