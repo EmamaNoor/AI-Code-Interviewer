@@ -74,10 +74,10 @@ export default function HintPanel() {
         )}
       </div>
 
-      <div className="p-4 border-t border-border bg-card flex gap-2">
+      <div className="p-4 border-t border-border bg-card grid grid-cols-2 gap-2">
         <button
           onClick={skipProblem}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 rounded-md font-medium transition-all text-sm"
+          className="flex items-center justify-center gap-1.5 bg-secondary hover:bg-secondary/80 text-secondary-foreground py-2.5 rounded-md font-medium transition-all text-sm w-full"
         >
           <SkipForward className="w-4 h-4" />
           Skip
@@ -85,7 +85,7 @@ export default function HintPanel() {
         <button
           onClick={requestHint}
           disabled={cooldownLeft > 0}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-md font-medium transition-all text-sm ${
+          className={`flex items-center justify-center gap-1.5 py-2.5 rounded-md font-medium transition-all text-sm w-full ${
             cooldownLeft > 0 
               ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-70' 
               : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/30'
@@ -97,7 +97,7 @@ export default function HintPanel() {
         <button
           onClick={executeCode}
           disabled={isExecuting || isSubmitting}
-          className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30 py-2.5 rounded-md font-medium transition-all text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-1.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30 py-2.5 rounded-md font-medium transition-all text-sm disabled:opacity-70 disabled:cursor-not-allowed w-full"
         >
           {isExecuting ? (
             <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
@@ -109,14 +109,14 @@ export default function HintPanel() {
         <button
           onClick={submitSolution}
           disabled={isSubmitting}
-          className="flex-[1.5] flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-md font-medium transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+          className="flex items-center justify-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-md font-medium transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm w-full"
         >
           {isSubmitting ? (
             <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
           ) : (
             <>
               <Send className="w-4 h-4" />
-              Submit Solution
+              Submit
             </>
           )}
         </button>
