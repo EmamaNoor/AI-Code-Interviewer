@@ -8,7 +8,7 @@ import ReactMarkdown from 'react-markdown';
 export default function HintPanel() {
   const [seconds, setSeconds] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
-  const { chatHistory, isSubmitting, submitSolution, skipProblem, requestHint, isAiTyping, lastHintTime } = useInterviewStore();
+  const { chatHistory, isSubmitting, submitSolution, skipProblem, requestHint, isAiTyping, lastHintTime, executeCode, isExecuting } = useInterviewStore();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -93,6 +93,18 @@ export default function HintPanel() {
         >
           <Lightbulb className="w-4 h-4" />
           {cooldownLeft > 0 ? `Wait ${cooldownLeft}s` : 'Hint'}
+        </button>
+        <button
+          onClick={executeCode}
+          disabled={isExecuting || isSubmitting}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30 py-2.5 rounded-md font-medium transition-all text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isExecuting ? (
+            <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+          ) : (
+            <span className="font-mono">{'>_'}</span>
+          )}
+          Run
         </button>
         <button
           onClick={submitSolution}

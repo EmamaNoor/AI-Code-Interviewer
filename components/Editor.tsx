@@ -18,10 +18,19 @@ export default function EditorPanel() {
   const { theme } = useTheme();
   const monaco = useMonaco();
   const [mounted, setMounted] = useState(false);
-  const { code, setCode, language, changeLanguage, resetCode, hintTiming, hintType, setHintTiming, setHintType } = useInterviewStore();
+  const { code, setCode, language, changeLanguage, resetCode, hintTiming, hintType, setHintTiming, setHintType, isExecuting, executionResult } = useInterviewStore();
 
   useEffect(() => {
     setMounted(true);
+    
+    // Suppress Monaco editor cancelation errors in Next.js dev overlay
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason && (event.reason.type === 'cancelation' || event.reason.name === 'AbortError')) {
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
   }, []);
 
   useEffect(() => {
@@ -167,33 +176,63 @@ export default function EditorPanel() {
         </button>
       </div>
 
-      <div className="flex-1 w-full pt-4">
-        {mounted && (
-          <Editor
-            height="100%"
-            language={language}
-            theme={theme === "dark" ? "vs-dark" : "light"}
-            value={code}
-            onChange={(val) => setCode(val || '')}
-            options={{
-              inlineSuggest: { enabled: true },
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: "'Fira Code', 'JetBrains Mono', monospace",
-              fontLigatures: true,
-              lineHeight: 24,
-              padding: { top: 16 },
-              scrollBeyondLastLine: false,
-              smoothScrolling: true,
-              cursorBlinking: "smooth",
-              cursorSmoothCaretAnimation: "on",
-              formatOnPaste: true,
-              autoClosingBrackets: "always",
-              autoClosingQuotes: "always",
-              formatOnType: true,
-            }}
-          />
-        )}
+      <div className="flex-1 w-full flex flex-col min-h-0">
+        <div className="flex-1 w-full relative pt-4">
+          {mounted && (
+            <Editor
+              height="100%"
+              language={language}
+              theme={theme === "dark" ? "vs-dark" : "light"}
+              value={code}
+              onChange={(val) => setCode(val || '')}
+              options={{
+                inlineSuggest: { enabled: true },
+                minimap: { enabled: false },
+                fontSize: 14,
+                fontFamily: "'Fira Code', 'JetBrains Mono', monospace",
+                fontLigatures: true,
+                lineHeight: 24,
+                padding: { top: 16 },
+                scrollBeyondLastLine: false,
+                smoothScrolling: true,
+                cursorBlinking: "smooth",
+                cursorSmoothCaretAnimation: "on",
+                formatOnPaste: true,
+                autoClosingBrackets: "always",
+                autoClosingQuotes: "always",
+                formatOnType: true,
+              }}
+            />
+          )}
+        </div>
+        
+        {/* Terminal Panel */}
+        <div className="h-48 border-t border-border bg-slate-50 dark:bg-[#0a0a0a] text-slate-800 dark:text-gray-300 font-mono text-sm overflow-y-auto p-4 custom-scrollbar shrink-0">
+          {isExecuting ? (
+            <div className="flex items-center text-blue-600 dark:text-blue-400">
+               <div className="w-3.5 h-3.5 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin mr-2" />
+               Executing code...
+            </div>
+          ) : executionResult ? (
+            <div>
+              <div className="text-slate-500 dark:text-gray-500 mb-2 uppercase text-xs tracking-wider">=== Execution Result ===</div>
+              {executionResult.compile_output && (
+                <div className="text-yellow-600 dark:text-yellow-400/90 mb-2 whitespace-pre-wrap">{executionResult.compile_output}</div>
+              )}
+              {executionResult.stderr && (
+                <div className="text-red-600 dark:text-red-400/90 mb-2 whitespace-pre-wrap">{executionResult.stderr}</div>
+              )}
+              {executionResult.stdout && (
+                <div className="text-green-700 dark:text-green-400/90 whitespace-pre-wrap">{executionResult.stdout}</div>
+              )}
+              {!executionResult.stdout && !executionResult.stderr && !executionResult.compile_output && (
+                <div className="text-slate-500 dark:text-gray-500 italic">No output</div>
+              )}
+            </div>
+          ) : (
+            <div className="text-slate-500 dark:text-gray-600 italic">Click "Run" to see console output here...</div>
+          )}
+        </div>
       </div>
     </div>
   );

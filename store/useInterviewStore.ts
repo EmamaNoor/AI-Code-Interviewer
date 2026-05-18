@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { io, Socket } from 'socket.io-client';
 
 export interface Problem {
   title: string;
@@ -18,7 +17,6 @@ export interface ChatMessage {
 }
 
 interface InterviewState {
-  socket: Socket | null;
   sessionId: string | null;
   difficulty: string;
   language: string;
@@ -29,6 +27,8 @@ interface InterviewState {
   evaluation: any | null;
   lastHintTime: number | null;
   isAiTyping: boolean;
+  isExecuting: boolean;
+  executionResult: { stdout: string; stderr: string; compile_output: string } | null;
   hintTiming: 'instant' | 'stuck';
   hintType: 'concept' | 'code';
   
@@ -39,7 +39,8 @@ interface InterviewState {
   skipProblem: () => Promise<void>;
   changeLanguage: (language: string) => Promise<void>;
   changeDifficulty: (difficulty: string) => Promise<void>;
-  requestHint: () => void;
+  requestHint: () => Promise<void>;
+  executeCode: () => Promise<void>;
   retryWithHint: () => void;
   resetCode: () => void;
   setHintTiming: (timing: 'instant' | 'stuck') => void;
@@ -47,7 +48,6 @@ interface InterviewState {
 }
 
 export const useInterviewStore = create<InterviewState>((set, get) => ({
-  socket: null,
   sessionId: null,
   difficulty: "Medium",
   language: "javascript",
@@ -64,11 +64,13 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   evaluation: null,
   lastHintTime: null,
   isAiTyping: false,
+  isExecuting: false,
+  executionResult: null,
   hintTiming: 'stuck',
   hintType: 'concept',
 
   initSession: async (sessionId: string, difficulty: string = "Medium", language: string = "javascript") => {
-    set({ sessionId, difficulty, language, problem: null, code: '', evaluation: null, chatHistory: [
+    set({ sessionId, difficulty, language, problem: null, code: '', evaluation: null, executionResult: null, chatHistory: [
       {
         id: 'welcome',
         role: 'assistant',
@@ -77,7 +79,36 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     ] });
 
     try {
-      // 1. Fetch or generate problem
+      // 1. Try to fetch existing session first
+      const getRes = await fetch(`/api/session?sessionId=${sessionId}`);
+      if (getRes.ok) {
+        const data = await getRes.json();
+        set({ 
+          problem: data.problem, 
+          code: data.code, 
+          language: data.language,
+          evaluation: data.evaluation
+        });
+
+        if (data.evaluation) {
+          const hasPastEval = get().chatHistory.some(msg => msg.id === 'past-eval');
+          if (!hasPastEval) {
+            set({
+              chatHistory: [
+                ...get().chatHistory,
+                {
+                  id: 'past-eval',
+                  role: 'assistant',
+                  content: `**Reviewing Past Attempt:**\nScore: ${data.evaluation.score}/100\nVerdict: ${data.evaluation.verdict}\n\nYou can modify and run your code to try again!`
+                }
+              ]
+            });
+          }
+        }
+        return;
+      }
+
+      // 2. Fallback to generating a new session if not found
       const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -105,30 +136,7 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         };
       }
       
-      set({ problem: newProblem, code: newProblem.starter_code });
-
-      // 2. Setup Socket
-      const existingSocket = get().socket;
-      if (existingSocket) existingSocket.disconnect();
-
-      const socket = io('http://localhost:3001'); // Using separate Node.js server
-      
-      socket.on('connect', () => {
-        socket.emit('join_session', { sessionId, problemDescription: JSON.stringify(newProblem) });
-      });
-
-      socket.on('ai_typing', () => {
-        set({ isAiTyping: true });
-      });
-
-      socket.on('ai_hint', (data: { hint: string }) => {
-        set((state) => ({
-          isAiTyping: false,
-          chatHistory: [...state.chatHistory, { id: Date.now().toString(), role: 'assistant', content: data.hint }]
-        }));
-      });
-
-      set({ socket });
+      set({ problem: newProblem, code: newProblem.starter_code, sessionId: data.sessionId || sessionId });
 
     } catch (error) {
       console.error('Failed to init session:', error);
@@ -137,16 +145,11 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
 
   setCode: (code: string) => {
     set({ code });
-    const { socket, sessionId, hintTiming, hintType, chatHistory } = get();
-    if (socket && sessionId) {
-      const pastHints = chatHistory.filter(h => h.role === 'assistant').map(h => h.content);
-      socket.emit('code_update', { sessionId, code, hintTiming, hintType, pastHints });
-    }
   },
 
   submitSolution: async () => {
     set({ isSubmitting: true });
-    const { problem, code } = get();
+    const { problem, code, sessionId } = get();
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
@@ -154,7 +157,8 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         body: JSON.stringify({
           problem: JSON.stringify(problem),
           userCode: code,
-          solution: problem?.solution
+          solution: problem?.solution,
+          sessionId
         })
       });
       const evaluation = await res.json();
@@ -176,6 +180,29 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     }
   },
 
+  executeCode: async () => {
+    const { code, language } = get();
+    if (!code) return;
+
+    set({ isExecuting: true, executionResult: null });
+
+    try {
+      const res = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, language })
+      });
+      
+      const data = await res.json();
+      set({ executionResult: { stdout: data.stdout, stderr: data.stderr, compile_output: data.compile_output } });
+    } catch (error) {
+      console.error('Execution failed', error);
+      set({ executionResult: { stdout: '', stderr: 'Network error or execution failed.', compile_output: '' } });
+    } finally {
+      set({ isExecuting: false });
+    }
+  },
+
   skipProblem: async () => {
     const { sessionId, difficulty, language } = get();
     if (sessionId) {
@@ -183,11 +210,8 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     }
   },
 
-  changeLanguage: async (language: string) => {
-    const { sessionId, difficulty } = get();
-    if (sessionId) {
-      await get().initSession(sessionId, difficulty, language);
-    }
+  changeLanguage: (language: string) => {
+    set({ language });
   },
 
   changeDifficulty: async (difficulty: string) => {
@@ -197,18 +221,37 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     }
   },
 
-  requestHint: () => {
-    const { socket, sessionId, lastHintTime, hintType, chatHistory } = get();
+  requestHint: async () => {
+    const { sessionId, lastHintTime, hintType, chatHistory, problem, code } = get();
     
     if (lastHintTime && Date.now() - lastHintTime < 30000) {
       alert("Please wait 30 seconds before requesting another manual hint.");
       return;
     }
 
-    if (socket && sessionId) {
-      set({ lastHintTime: Date.now() });
-      const pastHints = chatHistory.filter(h => h.role === 'assistant').map(h => h.content);
-      socket.emit('request_manual_hint', { sessionId, hintType, pastHints });
+    if (!sessionId) return;
+
+    set({ lastHintTime: Date.now(), isAiTyping: true });
+    
+    const pastHints = chatHistory.filter(h => h.role === 'assistant').map(h => h.content);
+    
+    try {
+      const res = await fetch('/api/hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problem, code, hintType, pastHints })
+      });
+      
+      if (!res.ok) throw new Error();
+      const { hint } = await res.json();
+      
+      set((state) => ({
+        isAiTyping: false,
+        chatHistory: [...state.chatHistory, { id: Date.now().toString(), role: 'assistant', content: hint }]
+      }));
+    } catch (error) {
+      set({ isAiTyping: false });
+      console.error('Failed to fetch hint', error);
     }
   },
 

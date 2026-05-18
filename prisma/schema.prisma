@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id // Clerk User ID
+  email     String
+  sessions  InterviewSession[]
+  createdAt DateTime @default(now())
+}
+
+model InterviewSession {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  problem     String   // JSON string of the problem
+  language    String
+  code        String
+  status      String   @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED
+  evaluations Evaluation[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Evaluation {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   InterviewSession @relation(fields: [sessionId], references: [id])
+  score     Int
+  verdict   String
+  feedback  String
+  createdAt DateTime @default(now())
+}

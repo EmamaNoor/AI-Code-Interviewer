@@ -1,5 +1,6 @@
 export const PROBLEM_PROMPT = (difficulty: string, language: string) => `
 Generate a ${difficulty} LeetCode-style coding problem. Ensure the starter_code and solution are written in ${language}.
+Ensure the "starter_code" and "solution" are formatted beautifully with clear newlines (using \\n) and standard tab/space indentations so they span multiple lines instead of being on a single line.
 Return only valid JSON, no markdown, no explanation.
 
 {
@@ -8,7 +9,7 @@ Return only valid JSON, no markdown, no explanation.
   "description": "full problem description",
   "examples": [{ "input": "...", "output": "...", "explanation": "..." }],
   "constraints": ["constraint 1", "constraint 2"],
-  "starter_code": "def solution():\n    pass",
+  "starter_code": "def solution():\\n    # Write code here\\n    pass",
   "solution": "complete working solution",
   "time_complexity": "O(...)",
   "space_complexity": "O(...)"

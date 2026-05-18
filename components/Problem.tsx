@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import { BookOpen } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { useInterviewStore } from "@/store/useInterviewStore";
 
 export default function ProblemPanel() {
@@ -20,6 +20,8 @@ export default function ProblemPanel() {
     <div className="flex flex-col h-full">
       <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-muted/30">
         <div className="flex items-center">
+          <UserButton afterSignOutUrl="/" />
+          <div className="w-px h-4 bg-border mx-3"></div>
           <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
           <span className="font-medium text-sm text-muted-foreground">Problem Description</span>
         </div>

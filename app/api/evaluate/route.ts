@@ -1,9 +1,14 @@
 import { groq } from '@/lib/groq';
 import { EVAL_PROMPT } from '@/lib/prompts';
+import prisma from '@/lib/prisma';
+import { auth } from '@clerk/nextjs/server';
 
 export async function POST(req: Request) {
   try {
-    const { problem, userCode, solution } = await req.json();
+    const { userId } = await auth();
+    if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { problem, userCode, solution, sessionId } = await req.json();
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -21,6 +26,24 @@ export async function POST(req: Request) {
     // Clean potential markdown blocks just in case
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const evaluation = JSON.parse(cleanText);
+
+    if (sessionId) {
+      await prisma.evaluation.create({
+        data: {
+          sessionId,
+          score: evaluation.score,
+          verdict: evaluation.verdict,
+          feedback: JSON.stringify(evaluation.improvements || [])
+        }
+      });
+      await prisma.interviewSession.update({
+        where: { id: sessionId },
+        data: {
+          code: userCode,
+          status: 'COMPLETED'
+        }
+      });
+    }
 
     return Response.json(evaluation);
   } catch (error: any) {

@@ -1,6 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { groq } from '@/lib/groq';
 import { PROBLEM_PROMPT } from '@/lib/prompts';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import prisma from '@/lib/prisma';
 
 const sessions = new Map<string, any>();
 
@@ -32,17 +34,52 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Missing sessionId' }, { status: 400 });
   }
 
-  const session = sessions.get(sessionId);
+  try {
+    const session = await prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        evaluations: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
 
-  if (!session) {
-    return Response.json({ error: 'Session not found' }, { status: 404 });
+    if (!session) {
+      return Response.json({ error: 'Session not found' }, { status: 404 });
+    }
+
+    const problem = JSON.parse(session.problem);
+
+    return Response.json({
+      problem,
+      code: session.code,
+      language: session.language,
+      evaluation: session.evaluations[0] || null
+    });
+  } catch (error) {
+    console.error("GET session error:", error);
+    return Response.json({ error: 'Database error' }, { status: 500 });
   }
-
-  return Response.json(session);
 }
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const user = await currentUser();
+
+    // Ensure user exists in DB
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: {
+        id: userId,
+        email: user?.emailAddresses[0]?.emailAddress || 'unknown@email.com',
+      }
+    });
+
     const { difficulty, language = 'javascript' } = await req.json();
 
     const completion = await groq.chat.completions.create({
@@ -61,7 +98,16 @@ export async function POST(req: Request) {
     const cleaned = text.replace(/```json|```/g, "").trim();
     const problem = JSON.parse(cleaned);
 
-    return Response.json({ problem });
+    const session = await prisma.interviewSession.create({
+      data: {
+        userId,
+        problem: JSON.stringify(problem),
+        language,
+        code: problem.starter_code
+      }
+    });
+
+    return Response.json({ problem, sessionId: session.id });
   } catch (error: any) {
     console.error("Session generation failed:", error);
 
