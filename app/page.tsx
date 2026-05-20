@@ -54,20 +54,11 @@ export default function Home() {
       </div>
       
       <div className="flex flex-col items-center justify-center text-center max-w-3xl mt-16 md:mt-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-semibold text-primary bg-primary/10 rounded-full border border-primary/20 backdrop-blur-md">
-          <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-          Next.js + Groq Powered Coding Simulator
-        </div>
-
-        <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent">
-          AI Code Interviewer
-        </h1>
-        
         <p className="text-muted-foreground text-sm md:text-lg max-w-2xl mb-12 leading-relaxed">
           A browser-based interview simulator built with Next.js and Groq. It generates coding problems, watches you code in Monaco, drops hints when you're stuck, and scores your solution with specific feedback on what to fix.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 items-center bg-card/30 border border-border p-6 rounded-2xl w-full max-w-md justify-center shadow-lg backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row gap-6 items-center bg-card/30 border border-border px-12 py-6 rounded-2xl w-full max-w-xl justify-center shadow-lg backdrop-blur-sm">
           <div className="flex gap-2">
             {["Easy", "Medium", "Hard"].map((lvl) => (
               <button

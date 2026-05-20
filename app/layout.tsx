@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        <body suppressHydrationWarning className={`${inter.className} min-h-screen bg-background antialiased overflow-hidden`}>
+        <body suppressHydrationWarning className={`${inter.className} min-h-screen bg-background antialiased`}>
           <script dangerouslySetInnerHTML={{ __html: `
             window.addEventListener('unhandledrejection', function(event) {
               if (event.reason) {
