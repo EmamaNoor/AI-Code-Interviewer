@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ["latin"] });
 import { ClerkProvider } from '@clerk/nextjs'
 
 export const metadata: Metadata = {
-  title: "AI Code Interviewer",
-  description: "Browser-Based AI Code Interviewer",
+  title: "AI Code Interviewer - Coding Simulation Platform",
+  description: "A browser-based interview simulator built with Next.js and Groq. It generates coding problems, watches you code in Monaco, drops hints when you're stuck, and scores your solution with specific feedback on what to fix.",
 };
 
 export default function RootLayout({

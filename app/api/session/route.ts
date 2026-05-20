@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { groq } from '@/lib/groq';
+import { getGroqClient } from '@/lib/groq';
 import { PROBLEM_PROMPT } from '@/lib/prompts';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
@@ -82,7 +82,8 @@ export async function POST(req: Request) {
 
     const { difficulty, language = 'javascript' } = await req.json();
 
-    const completion = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const completion = await groqClient.chat.completions.create({
       messages: [
         {
           role: "user",

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { getGroqClient } from "@/lib/groq";
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +20,8 @@ Code to execute:
 ${code}
 \`\`\``;
 
-    const completion = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const completion = await groqClient.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
       model: "llama-3.3-70b-versatile",
       max_tokens: 300,

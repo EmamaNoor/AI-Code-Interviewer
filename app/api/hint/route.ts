@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+import { getGroqClient } from "@/lib/groq";
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +17,8 @@ ${promptRule}`;
 
     const userMessage = `Problem: ${JSON.stringify(problem)}\nCode so far:\n${code}`;
 
-    const completion = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const completion = await groqClient.chat.completions.create({
       messages: [
         { role: "system", content: systemMessage },
         { role: "user", content: userMessage }

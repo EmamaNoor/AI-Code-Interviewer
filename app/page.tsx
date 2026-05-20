@@ -5,7 +5,18 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, UserButton } from "@clerk/nextjs";
-import { ClipboardList, BookOpen, Clock, ChevronRight, Award, Plus } from "lucide-react";
+import { 
+  ClipboardList, 
+  BookOpen, 
+  Clock, 
+  ChevronRight, 
+  Award, 
+  Plus, 
+  Brain, 
+  Code2, 
+  Sparkles, 
+  Terminal 
+} from "lucide-react";
 
 export default function Home() {
   const [difficulty, setDifficulty] = useState("Medium");
@@ -36,21 +47,27 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24 bg-background text-foreground overflow-y-auto">
+    <div className="flex min-h-screen flex-col items-center justify-start p-8 md:p-24 bg-background text-foreground overflow-y-auto custom-scrollbar">
       <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
         {userId && <UserButton />}
         <ThemeToggle />
       </div>
       
-      <div className="flex flex-col items-center justify-center text-center max-w-2xl mt-12 md:mt-0">
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+      <div className="flex flex-col items-center justify-center text-center max-w-3xl mt-16 md:mt-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-semibold text-primary bg-primary/10 rounded-full border border-primary/20 backdrop-blur-md">
+          <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+          Next.js + Groq Powered Coding Simulator
+        </div>
+
+        <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent">
           AI Code Interviewer
         </h1>
-        <p className="text-muted-foreground text-sm md:text-base max-w-xl mb-10 leading-relaxed">
-          Practice your coding skills in a realistic, browser-based environment with AI-powered hints and real-time evaluation.
+        
+        <p className="text-muted-foreground text-sm md:text-lg max-w-2xl mb-12 leading-relaxed">
+          A browser-based interview simulator built with Next.js and Groq. It generates coding problems, watches you code in Monaco, drops hints when you're stuck, and scores your solution with specific feedback on what to fix.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-6 items-center bg-card/30 border border-border p-6 rounded-2xl w-full justify-center shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 items-center bg-card/30 border border-border p-6 rounded-2xl w-full max-w-md justify-center shadow-lg backdrop-blur-sm">
           <div className="flex gap-2">
             {["Easy", "Medium", "Hard"].map((lvl) => (
               <button
@@ -69,16 +86,59 @@ export default function Home() {
 
           <button 
             onClick={handleStart}
-            className="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95"
+            className="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 shrink-0"
           >
             <Plus className="w-4 h-4" />
-            Start New Interview
+            Start Interview
           </button>
         </div>
       </div>
 
+      {/* Feature Showcase Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-5xl mt-20 text-left">
+        <div className="p-6 rounded-2xl border border-border/50 bg-card/25 backdrop-blur-sm hover:border-primary/30 transition-all hover:-translate-y-1 duration-300 group">
+          <div className="p-3 rounded-xl bg-primary/10 w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+            <Brain className="w-5 h-5 text-primary" />
+          </div>
+          <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors">On-Demand Problems</h3>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Generate customizable, LeetCode-style coding challenges instantly powered by llama-3.3-70b.
+          </p>
+        </div>
+
+        <div className="p-6 rounded-2xl border border-border/50 bg-card/25 backdrop-blur-sm hover:border-primary/30 transition-all hover:-translate-y-1 duration-300 group">
+          <div className="p-3 rounded-xl bg-primary/10 w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+            <Code2 className="w-5 h-5 text-primary" />
+          </div>
+          <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors">Monaco Code Editor</h3>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Code in a professional interface with syntax highlighting, language switching, and local execution.
+          </p>
+        </div>
+
+        <div className="p-6 rounded-2xl border border-border/50 bg-card/25 backdrop-blur-sm hover:border-primary/30 transition-all hover:-translate-y-1 duration-300 group">
+          <div className="p-3 rounded-xl bg-primary/10 w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+            <Sparkles className="w-5 h-5 text-primary" />
+          </div>
+          <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors">Non-Spoiling Hints</h3>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Receive smart, real-time conceptual nudges or code completions without spoiling the solution.
+          </p>
+        </div>
+
+        <div className="p-6 rounded-2xl border border-border/50 bg-card/25 backdrop-blur-sm hover:border-primary/30 transition-all hover:-translate-y-1 duration-300 group">
+          <div className="p-3 rounded-xl bg-primary/10 w-fit mb-4 group-hover:bg-primary/20 transition-colors">
+            <Terminal className="w-5 h-5 text-primary" />
+          </div>
+          <h3 className="font-bold text-base mb-2 group-hover:text-primary transition-colors">Smart Evaluation</h3>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Submit your code for instant grading, complexity analysis, and specific improvement actions.
+          </p>
+        </div>
+      </div>
+
       {userId && (
-        <div className="w-full max-w-4xl mt-16 border border-border rounded-2xl bg-card/30 backdrop-blur-sm p-6 shadow-lg animate-fade-in">
+        <div className="w-full max-w-5xl mt-16 border border-border rounded-2xl bg-card/30 backdrop-blur-sm p-6 shadow-lg animate-fade-in mb-12">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
             <div className="flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-primary" />

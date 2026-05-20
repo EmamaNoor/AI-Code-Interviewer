@@ -1,4 +1,4 @@
-import { groq } from '@/lib/groq';
+import { getGroqClient } from '@/lib/groq';
 import { EVAL_PROMPT } from '@/lib/prompts';
 import prisma from '@/lib/prisma';
 import { auth } from '@clerk/nextjs/server';
@@ -10,7 +10,8 @@ export async function POST(req: Request) {
 
     const { problem, userCode, solution, sessionId } = await req.json();
 
-    const completion = await groq.chat.completions.create({
+    const groqClient = getGroqClient();
+    const completion = await groqClient.chat.completions.create({
       messages: [
         {
           role: "user",
