@@ -54,8 +54,11 @@ export default function Home() {
       </div>
       
       <div className="flex flex-col items-center justify-center text-center max-w-3xl mt-16 md:mt-8">
+        <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight bg-gradient-to-r from-primary via-primary/80 to-primary/50 bg-clip-text text-transparent">
+          Codely
+        </h1>
         <p className="text-muted-foreground text-sm md:text-lg max-w-2xl mb-12 leading-relaxed">
-          A browser-based interview simulator built with Next.js and Groq. It generates coding problems, watches you code in Monaco, drops hints when you're stuck, and scores your solution with specific feedback on what to fix.
+          A browser-based interview simulator that generates coding problems, watches you code in real-time, drops hints when you're stuck, and scores your solution with specific feedback on what to fix.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-6 items-center bg-card/30 border border-border px-12 py-6 rounded-2xl w-full max-w-xl justify-center shadow-lg backdrop-blur-sm">

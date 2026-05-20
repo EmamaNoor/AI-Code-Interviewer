@@ -56,7 +56,7 @@ export default function InterviewPage() {
           <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm z-10 flex-shrink-0">
             <div className="flex items-center gap-2">
               <LayoutDashboard className="w-5 h-5 text-primary" />
-              <h1 className="font-semibold tracking-tight">AI Interviewer</h1>
+              <h1 className="font-semibold tracking-tight">Codely</h1>
               <span className="text-xs text-muted-foreground ml-2 px-2 py-0.5 bg-muted rounded-full">
                 {sessionId}
               </span>
